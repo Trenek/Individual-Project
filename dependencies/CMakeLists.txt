@@ -1,10 +1,14 @@
 add_subdirectory(capd)
 
+find_program(GNUPLOT_EXECUTABLE gnuplot REQUIRED)
+
 set(INCLUDE_DIRECTORIES
+    "${CMAKE_CURRENT_SOURCE_DIR}/gnuplot"
 )
 
 set(LINK_LIBRARIES
     capd
+    ${GNUPLOT_LIB}
 )
 
 set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} PARENT_SCOPE)

@@ -1,5 +1,8 @@
 #include <cstdio>
+#include <stdint.h>
+
 #include "capd/capdlib.h"
+#include "gnuplot-iostream.h"
 
 int main() {
   // define an instance of class DMap that describes the vector field
@@ -31,7 +34,7 @@ int main() {
   solver.setStep(0.00001);
 
   // specify initial condition
-  capd::DVector u{1000.0, 1000.0, 10.0, 0.0};
+  capd::DVector u{1.0, 1.0, 0.0, 1.0};
   double t = 0.0;
 
   // use one step Taylor method to integrate
