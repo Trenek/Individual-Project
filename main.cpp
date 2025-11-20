@@ -9,14 +9,19 @@
 #include "capd/capdlib.h"
 #include "capd/mpcapdlib.h"
 
+struct data {
+    double t;
+    double pos[2];
+};
+
 struct commonData {
     std::atomic<bool> isFinished;
-    std::atomic<bool> isWritten;
+    std::atomic<bool> isDrawOrdered;
+    std::condition_variable drawOrderMessager;
     std::mutex access;
-    std::mutex dataWrittenMutex;
-    std::condition_variable isDataWritten;
+    std::mutex drawMutex;
 
-    std::vector<std::pair<double,double>> array;
+    std::vector<data> array;
 };
 
 // x = r * sin(theta)
@@ -59,23 +64,24 @@ void simulate(struct commonData &data) {
 
     solver.setStep(0.0001);
 
-    capd::DVector u{1.0, 0.0, 0.0, 0.2};
+    capd::DVector u{1.0, 0.0, 0.0, 0.138};
     double t = 0.0;
 
-    size_t step = 0;
     size_t cooldown = 0;
     double max = 0;
     double prev[2] = { u[0], u[1] };
 
-    std::vector<std::pair<double,double>> temp;
+    std::vector<struct data> temp;
 
     do {
         u = solver(t, u);
 
         // store point
         double curr = sqrt(u[0] * u[0] + u[1] * u[1]);
-        //pts.emplace_back(step, curr);
-        temp.emplace_back(u[0], u[1]);
+        temp.emplace_back((struct data) {
+            .t = t,
+            .pos = { u[0], u[1]}
+        });
 
         if (cooldown > 0) cooldown -= 1;
 
@@ -90,24 +96,24 @@ void simulate(struct commonData &data) {
             cooldown = 50;
         }
 
-        if (data.access.try_lock()) {
-            data.isWritten = true;
-            data.isDataWritten.notify_all();
+        if (data.isDrawOrdered == false && data.access.try_lock()) {
+            data.isDrawOrdered = true;
 
             for(auto &e : temp) {
                 data.array.push_back(e);
             }
             temp.clear();
             data.access.unlock();
+
+            data.drawOrderMessager.notify_all();
         }
 
         printf("\rt=%6f, x=%6f, y=%6f, dx=%6f, dy=%6f", t, u[0], u[1], u[2], u[3]);
-    } while(t < 200);
+    } while(t < 20'000);
 
     data.access.lock();
-    data.isWritten = true;
     data.isFinished = true;
-    data.isDataWritten.notify_all();
+    data.isDrawOrdered = true;
 
     for(auto &e : temp) {
         data.array.push_back(e);
@@ -115,49 +121,94 @@ void simulate(struct commonData &data) {
 
     temp.clear();
     data.access.unlock();
+
+    data.drawOrderMessager.notify_all();
 }
 
-void write(struct commonData &data) {
-    FILE* gp = popen("gnuplot -persist", "w");
+void draw1(struct commonData &data, bool end) {
+    static FILE* gp{[]() {
+        FILE *gp = popen("gnuplot -persist", "w");
 
-    fprintf(gp, "set term qt size 800,600\n");
-    fprintf(gp, "set title 'Live Trajectory'\n");
-    fprintf(gp, "set xlabel 'x'\n");
-    fprintf(gp, "set ylabel 'y'\n");
-    fprintf(gp, "set grid\n");
-    fflush(gp);
+        fprintf(gp, "set term qt 1 size 800,600\n");
+        fprintf(gp, "set title 'Trajektoria'\n");
+        fprintf(gp, "set xlabel 'x'\n");
+        fprintf(gp, "set ylabel 'y'\n");
+        fprintf(gp, "set grid\n");
+        fflush(gp);
 
+        return gp;
+    }()};
+
+    if (end) pclose(gp);
+    else {
+        fprintf(gp, "plot '-' with lines title 'orbita'\n");
+        for (auto& p : data.array) {
+            fprintf(gp, "%f %f\n", p.pos[0], p.pos[1]);
+        }
+        fprintf(gp, "e\n");
+        fflush(gp);
+    }
+}
+
+void draw2(struct commonData &data, bool end) {
+    static FILE* gp{[]() {
+        FILE *gp = popen("gnuplot -persist", "w");
+
+        fprintf(gp, "set term qt 1 size 800,600\n");
+        fprintf(gp, "set title 'Wychylenie'\n");
+        fprintf(gp, "set xlabel 'x'\n");
+        fprintf(gp, "set ylabel 'y'\n");
+        fprintf(gp, "set grid\n");
+        fflush(gp);
+
+        return gp;
+    }()};
+
+    if (end) pclose(gp);
+    else {
+        fprintf(gp, "plot '-' with lines title 'wychylenie'\n");
+        for (auto& p : data.array) {
+            double curr = sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1]);
+
+            fprintf(gp, "%f %f\n", p.t, curr);
+        }
+        fprintf(gp, "e\n");
+        fflush(gp);
+    }
+}
+
+void draw(struct commonData &data) {
     do {
-        std::unique_lock<std::mutex> lk(data.dataWrittenMutex);
-        data.isDataWritten.wait(lk, [&] { return data.isWritten == true; });
+        std::unique_lock<std::mutex> lk(data.drawMutex);
+        data.drawOrderMessager.wait(lk, [&] { return data.isDrawOrdered == true; });
 
         data.access.lock();
-        data.isWritten = false;
+        data.isDrawOrdered = false;
 
-        for (auto& p : data.array) {
-            fprintf(gp, "%f %f\n", p.first, p.second);
-        }
+        std::thread t1(draw1, std::ref(data), false);
+        std::thread t2(draw2, std::ref(data), false);
+
+        t1.join();
+        t2.join();
+
         data.access.unlock();
-
-        fflush(gp);
-        fprintf(gp, "e\n");
-        fprintf(gp, "plot '-' with lines title 'orbit'\n");
     } while(data.isFinished == false);
 
-    pclose(gp);
+    std::thread t1(draw1, std::ref(data), true);
+    std::thread t2(draw2, std::ref(data), true);
+
+    t1.join();
+    t2.join();
 }
 
 int main() {
-    struct commonData data{
-        .isFinished = false,
-        .isWritten = false
-    };
+    struct commonData data{};
 
-    std::thread reader(simulate, std::ref(data));
-    std::thread writer(write, std::ref(data));
+    std::thread writer(simulate, std::ref(data));
+    std::thread reader(draw, std::ref(data));
 
-    reader.join();
     writer.join();
+    reader.join();
 
     return 0;
 }
