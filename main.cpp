@@ -1,8 +1,23 @@
 #include <cstdio>
 #include <stdint.h>
 
+#include <condition_variable>
+#include <thread>
+#include <mutex>
+#include <atomic>
+
 #include "capd/capdlib.h"
 #include "capd/mpcapdlib.h"
+
+struct commonData {
+    std::atomic<bool> isFinished;
+    std::atomic<bool> isWritten;
+    std::mutex access;
+    std::mutex dataWrittenMutex;
+    std::condition_variable isDataWritten;
+
+    std::vector<std::pair<double,double>> array;
+};
 
 // x = r * sin(theta)
 // y = r * cos(theta)
@@ -19,7 +34,7 @@ double getAngle(double pos1[2], double pos2[2]) {
     return acos((x1 * x2 + y1 * y2) / (r1 * r2));
 }
 
-int main() {
+void simulate(struct commonData &data) {
     capd::DMap pendulum(
     "time:t;"
     "var:"
@@ -44,28 +59,15 @@ int main() {
 
     solver.setStep(0.0001);
 
-    capd::DVector u{1.0, 0.0, 0.0, 0.001};
+    capd::DVector u{1.0, 0.0, 0.0, 0.2};
     double t = 0.0;
-
-    FILE* gp = popen("gnuplot -persist", "w");
-    if (!gp) {
-        fprintf(stderr, "Failed to start gnuplot.\n");
-        return 1;
-    }
-
-    fprintf(gp, "set term qt size 800,600\n");
-    fprintf(gp, "set title 'Live Trajectory'\n");
-    fprintf(gp, "set xlabel 'x'\n");
-    fprintf(gp, "set ylabel 'y'\n");
-    fprintf(gp, "set grid\n");
-    fflush(gp);
-
-    std::vector<std::pair<double,double>> pts;
 
     size_t step = 0;
     size_t cooldown = 0;
     double max = 0;
     double prev[2] = { u[0], u[1] };
+
+    std::vector<std::pair<double,double>> temp;
 
     do {
         u = solver(t, u);
@@ -73,7 +75,7 @@ int main() {
         // store point
         double curr = sqrt(u[0] * u[0] + u[1] * u[1]);
         //pts.emplace_back(step, curr);
-        pts.emplace_back(u[0], u[1]);
+        temp.emplace_back(u[0], u[1]);
 
         if (cooldown > 0) cooldown -= 1;
 
@@ -88,19 +90,74 @@ int main() {
             cooldown = 50;
         }
 
-        step += 1;
-        if (step % 5'000 == 0) {
-            fprintf(gp, "plot '-' with lines title 'orbit'\n");
-            for (auto& p : pts)
-                fprintf(gp, "%f %f\n", p.first, p.second);
-            fprintf(gp, "e\n");
-            fflush(gp);
-        }
-        printf("\rt=%6f, x=%6f, y=%6f, dx=%6f, dy=%6f", t, u[0], u[1], u[2], u[3]);
+        if (data.access.try_lock()) {
+            data.isWritten = true;
+            data.isDataWritten.notify_all();
 
-    } while(t < 200'000.0);
+            for(auto &e : temp) {
+                data.array.push_back(e);
+            }
+            temp.clear();
+            data.access.unlock();
+        }
+
+        printf("\rt=%6f, x=%6f, y=%6f, dx=%6f, dy=%6f", t, u[0], u[1], u[2], u[3]);
+    } while(t < 200);
+
+    data.access.lock();
+    data.isWritten = true;
+    data.isFinished = true;
+    data.isDataWritten.notify_all();
+
+    for(auto &e : temp) {
+        data.array.push_back(e);
+    }
+
+    temp.clear();
+    data.access.unlock();
+}
+
+void write(struct commonData &data) {
+    FILE* gp = popen("gnuplot -persist", "w");
+
+    fprintf(gp, "set term qt size 800,600\n");
+    fprintf(gp, "set title 'Live Trajectory'\n");
+    fprintf(gp, "set xlabel 'x'\n");
+    fprintf(gp, "set ylabel 'y'\n");
+    fprintf(gp, "set grid\n");
+    fflush(gp);
+
+    do {
+        std::unique_lock<std::mutex> lk(data.dataWrittenMutex);
+        data.isDataWritten.wait(lk, [&] { return data.isWritten == true; });
+
+        data.access.lock();
+        data.isWritten = false;
+
+        for (auto& p : data.array) {
+            fprintf(gp, "%f %f\n", p.first, p.second);
+        }
+        data.access.unlock();
+
+        fflush(gp);
+        fprintf(gp, "e\n");
+        fprintf(gp, "plot '-' with lines title 'orbit'\n");
+    } while(data.isFinished == false);
 
     pclose(gp);
+}
+
+int main() {
+    struct commonData data{
+        .isFinished = false,
+        .isWritten = false
+    };
+
+    std::thread reader(simulate, std::ref(data));
+    std::thread writer(write, std::ref(data));
+
+    reader.join();
+    writer.join();
 
     return 0;
 }
