@@ -5,25 +5,27 @@
 
 #include "common.h"
 
+FILE* createPlot(const char *name, int num) {
+    FILE *gp = popen("gnuplot -persist", "w");
+
+    fprintf(gp, "set term qt %d size 800,600\n", num);
+    fprintf(gp, "set title '%s'\n", name);
+    fprintf(gp, "set xlabel 'x'\n");
+    fprintf(gp, "set ylabel 'y'\n");
+    fprintf(gp, "set grid\n");
+    fflush(gp);
+
+    return gp;
+};
+
 static void draw1(struct commonData &data, bool end) {
-    static FILE* gp{[]() {
-        FILE *gp = popen("gnuplot -persist", "w");
-
-        fprintf(gp, "set term qt 1 size 800,600\n");
-        fprintf(gp, "set title 'Trajektoria'\n");
-        fprintf(gp, "set xlabel 'x'\n");
-        fprintf(gp, "set ylabel 'y'\n");
-        fprintf(gp, "set grid\n");
-        fflush(gp);
-
-        return gp;
-    }()};
+    static FILE* gp{createPlot("Trajektoria", 1)};
 
     if (end) pclose(gp);
     else {
         fprintf(gp, "plot '-' with lines title 'orbita'\n");
         for (auto& p : data.array) {
-            fprintf(gp, "%f %f\n", p.pos[0], p.pos[1]);
+            fprintf(gp, "%Lf %Lf\n", p.pos[0], p.pos[1]);
         }
         fprintf(gp, "e\n");
         fflush(gp);
@@ -31,26 +33,15 @@ static void draw1(struct commonData &data, bool end) {
 }
 
 static void draw2(struct commonData &data, bool end) {
-    static FILE* gp{[]() {
-        FILE *gp = popen("gnuplot -persist", "w");
-
-        fprintf(gp, "set term qt 2 size 800,600\n");
-        fprintf(gp, "set title 'Wychylenie'\n");
-        fprintf(gp, "set xlabel 'x'\n");
-        fprintf(gp, "set ylabel 'y'\n");
-        fprintf(gp, "set grid\n");
-        fflush(gp);
-
-        return gp;
-    }()};
+    static FILE* gp{createPlot("Wychylenie", 2)};
 
     if (end) pclose(gp);
     else {
         fprintf(gp, "plot '-' with lines title 'wychylenie'\n");
         for (auto& p : data.array) {
-            double curr = sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1]);
+            long double curr = sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1]);
 
-            fprintf(gp, "%f %f\n", p.t, curr);
+            fprintf(gp, "%Lf %Lf\n", p.t, curr);
         }
         fprintf(gp, "e\n");
         fflush(gp);
@@ -58,18 +49,7 @@ static void draw2(struct commonData &data, bool end) {
 }
 
 static void draw3(struct commonData &data, bool end) {
-    static FILE* gp{[]() {
-        FILE *gp = popen("gnuplot -persist", "w");
-
-        fprintf(gp, "set term qt 3 size 800,600\n");
-        fprintf(gp, "set title 'Wychylenie'\n");
-        fprintf(gp, "set xlabel 'x'\n");
-        fprintf(gp, "set ylabel 'y'\n");
-        fprintf(gp, "set grid\n");
-        fflush(gp);
-
-        return gp;
-    }()};
+    static FILE* gp{createPlot("Cos", 3)};
 
     if (end) pclose(gp);
     else {
@@ -77,7 +57,7 @@ static void draw3(struct commonData &data, bool end) {
         for (auto& p : data.array) {
             double curr = p.pos[0] * p.pos[1];
 
-            fprintf(gp, "%f %f\n", p.t, curr);
+            fprintf(gp, "%Lf %f\n", p.t, curr);
         }
         fprintf(gp, "e\n");
         fflush(gp);
@@ -92,23 +72,27 @@ void draw(struct commonData &data) {
 
         data.access.lock();
         data.isDrawOrdered = false;
+        
+        std::thread t[] = {
+            std::thread(draw1, std::ref(data), false),
+            //std::thread(draw2, std::ref(data), false),
+            //std::thread(draw3, std::ref(data), false),
+        };
 
-        std::thread t1(draw1, std::ref(data), false);
-        std::thread t2(draw2, std::ref(data), false);
-        std::thread t3(draw3, std::ref(data), false);
-
-        t1.join();
-        t2.join();
-        t3.join();
+        for (auto &e : t) {
+            e.join();
+        }
 
         data.access.unlock();
     } while(data.isFinished == false);
 
-    std::thread t1(draw1, std::ref(data), true);
-    std::thread t2(draw2, std::ref(data), true);
-    std::thread t3(draw3, std::ref(data), true);
+    std::thread t[] = {
+        std::thread(draw1, std::ref(data), true),
+        //std::thread(draw2, std::ref(data), true),
+        //std::thread(draw3, std::ref(data), true),
+    };
 
-    t1.join();
-    t2.join();
-    t3.join();
+    for (auto &e : t) {
+        e.join();
+    }
 }

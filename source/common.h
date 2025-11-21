@@ -5,8 +5,8 @@
 #include <atomic>
 
 struct data {
-    double t;
-    double pos[2];
+    long double t;
+    long double pos[2];
 };
 
 struct commonData {

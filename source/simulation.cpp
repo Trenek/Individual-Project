@@ -1,22 +1,21 @@
 #include "capd/capdlib.h"
-#include "capd/mpcapdlib.h"
 
 #include "common.h"
 
-static double getAngle(double pos1[2], double pos2[2]) {
-    double x1 = pos1[0];
-    double x2 = pos2[0];
-    double y1 = pos1[1];
-    double y2 = pos2[1];
+static long double getAngle(long double pos1[2], long double pos2[2]) {
+    long double x1 = pos1[0];
+    long double x2 = pos2[0];
+    long double y1 = pos1[1];
+    long double y2 = pos2[1];
 
-    double r1 = sqrt(x1 * x1 + y1 * y1);
-    double r2 = sqrt(x2 * x2 + y2 * y2);
+    long double r1 = sqrt(x1 * x1 + y1 * y1);
+    long double r2 = sqrt(x2 * x2 + y2 * y2);
 
     return acos((x1 * x2 + y1 * y2) / (r1 * r2));
 }
 
 void simulate(struct commonData &data) {
-    capd::DMap pendulum(
+    capd::LDMap pendulum(
         "time:t;"
         "var:"
             "x,"
@@ -36,36 +35,35 @@ void simulate(struct commonData &data) {
     pendulum.setParameter("cs", 0.00001);
 
     uint32_t order = 100;
-    capd::DOdeSolver solver{pendulum, order};
+    capd::LDOdeSolver solver{pendulum, order};
 
-    solver.setStep(0.0001);
+    solver.setStep(0.00001);
 
-    capd::DVector u{1.0, 0.0, 0.0, 0.138};
-    double t = 0.0;
+    capd::LDVector u{1.0, 0.0, 0.0, 0.06};
+    long double t = 0.0;
 
     size_t cooldown = 0;
-    double max = 0;
-    double prev[2] = { u[0], u[1] };
+    long double max = 0;
+    long double prev[2] = { u[0], u[1] };
 
     std::vector<struct data> temp;
 
     do {
         u = solver(t, u);
 
-        // store point
-        double curr = sqrt(u[0] * u[0] + u[1] * u[1]);
+        long double curr = sqrt(u[0] * u[0] + u[1] * u[1]);
         temp.emplace_back((struct data) {
             .t = t,
-            .pos = { u[0], u[1]}
+            .pos = { u[0], u[1] }
         });
 
         if (cooldown > 0) cooldown -= 1;
 
         if (max < curr || abs(max - curr) < 10e-10) 
         if (cooldown == 0) {
-            double uu[2] = { u[0], u[1] };
+            long double uu[2] = { u[0], u[1] };
 
-            printf("\n%f\n", getAngle(prev, uu));
+            printf("\n%Lf\n", getAngle(prev, uu));
             max = curr;
             prev[0] = u[0];
             prev[1] = u[1];
@@ -84,7 +82,7 @@ void simulate(struct commonData &data) {
             data.drawOrderMessager.notify_all();
         }
 
-        printf("\rt=%6f, x=%6f, y=%6f, dx=%6f, dy=%6f", t, u[0], u[1], u[2], u[3]);
+        printf("\rt=%6Lf, x=%6Lf, y=%6Lf, dx=%6Lf, dy=%6Lf", t, u[0], u[1], u[2], u[3]);
     } while(t < 20'000);
 
     data.access.lock();
