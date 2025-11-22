@@ -4,9 +4,11 @@
 #include <mutex>
 #include <atomic>
 
+typedef long double num;
+
 struct data {
-    long double t;
-    long double pos[2];
+    num t;
+    num pos[2];
 };
 
 struct commonData {
@@ -15,6 +17,8 @@ struct commonData {
     std::condition_variable drawOrderMessager;
     std::mutex access;
     std::mutex drawMutex;
+
+    num init;
 
     std::vector<data> array;
 };

@@ -1,12 +1,12 @@
-#include <stdio.h>
+#include <print>
 #include <math.h>
-
 #include <thread>
 
 #include "common.h"
 
-FILE* createPlot(const char *name, int num) {
-    FILE *gp = popen("gnuplot -persist", "w");
+FILE* createPlot(const char *name) {
+    static int num = 1;
+    FILE *gp = popen("gnuplot", "w");
 
     fprintf(gp, "set term qt %d size 800,600\n", num);
     fprintf(gp, "set title '%s'\n", name);
@@ -15,55 +15,57 @@ FILE* createPlot(const char *name, int num) {
     fprintf(gp, "set grid\n");
     fflush(gp);
 
+    num += 1;
+
     return gp;
 };
 
 static void draw1(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Trajektoria", 1)};
+    static FILE* gp{createPlot("Trajektoria")};
 
     if (end) pclose(gp);
     else {
-        fprintf(gp, "plot '-' with lines title 'orbita'\n");
+        std::print(gp, "plot '-' with lines title 'orbita'\n");
         for (auto& p : data.array) {
-            fprintf(gp, "%Lf %Lf\n", p.pos[0], p.pos[1]);
+            std::print(gp, "{} {}\n", p.pos[0], p.pos[1]);
         }
-        fprintf(gp, "e\n");
+        std::print(gp, "e\n");
+
         fflush(gp);
     }
 }
 
 static void draw2(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Wychylenie", 2)};
+    static FILE* gp{createPlot("Wychylenie")};
 
     if (end) pclose(gp);
     else {
-        fprintf(gp, "plot '-' with lines title 'wychylenie'\n");
+        std::print(gp, "plot '-' with lines title 'wychylenie'\n");
         for (auto& p : data.array) {
-            long double curr = sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1]);
+            num curr = sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1]);
 
-            fprintf(gp, "%Lf %Lf\n", p.t, curr);
+            std::print(gp, "{} {}\n", p.t, curr);
         }
-        fprintf(gp, "e\n");
+        std::print(gp, "e\n");
         fflush(gp);
     }
 }
 
 static void draw3(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Cos", 3)};
+    static FILE* gp{createPlot("Cos")};
 
     if (end) pclose(gp);
     else {
-        fprintf(gp, "plot '-' with lines title 'wychylenie'\n");
+        std::print(gp, "plot '-' with lines title 'wychylenie'\n");
         for (auto& p : data.array) {
-            double curr = p.pos[0] * p.pos[1];
+            num curr = p.pos[0] * p.pos[1];
 
-            fprintf(gp, "%Lf %f\n", p.t, curr);
+            std::print(gp, "{} {}\n", p.t, curr);
         }
-        fprintf(gp, "e\n");
+        std::print(gp, "e\n");
         fflush(gp);
     }
 }
-
 
 void draw(struct commonData &data) {
     do {
@@ -75,7 +77,7 @@ void draw(struct commonData &data) {
         
         std::thread t[] = {
             std::thread(draw1, std::ref(data), false),
-            //std::thread(draw2, std::ref(data), false),
+            std::thread(draw2, std::ref(data), false),
             //std::thread(draw3, std::ref(data), false),
         };
 
@@ -88,7 +90,7 @@ void draw(struct commonData &data) {
 
     std::thread t[] = {
         std::thread(draw1, std::ref(data), true),
-        //std::thread(draw2, std::ref(data), true),
+        std::thread(draw2, std::ref(data), true),
         //std::thread(draw3, std::ref(data), true),
     };
 
