@@ -4,11 +4,16 @@
 
 #include "common.h"
 
-num toDeg(num rad) {
+static num toDeg(num rad) {
     return 180 * rad / M_PI;
 }
 
-static num getAngle(num pos1[2], num pos2[2]) {
+typedef capd::vectalg::Matrix<num, 0, 0> Matrix;
+typedef capd::map::Map<Matrix> Map;
+typedef capd::dynsys::BasicOdeSolver<Map> Solver;
+typedef capd::vectalg::Vector<num, 0> Vector;
+
+static num getAngle(Vector pos1, Vector pos2) {
     num x1 = pos1[0];
     num x2 = pos2[0];
     num y1 = pos1[1];
@@ -22,111 +27,92 @@ static num getAngle(num pos1[2], num pos2[2]) {
     return toDeg(rad);
 }
 
-typedef capd::vectalg::Matrix<num, 0, 0> Matrix;
-typedef capd::map::Map<Matrix> Map;
-typedef capd::dynsys::BasicOdeSolver<Map> Solver;
-typedef capd::vectalg::Vector<num, 0> Vector;
-
 struct timestamp {
     Vector pos;
     num r;
     num t;
 };
 
-void simulate(struct commonData &data) {
-    Map pendulum(
-        "time:t;"
-        "var:"
-            "x,"
-            "y,"
-            "dx,"
-            "dy;"
-        "par:"
-            "ce,"
-            "cs;"
-        "fun:"
-            "dx,"
-            "dy,"
-            "-(ce*x+cs*dy)/((x^2+y^2)^1.5),"
-            "(cs*dx-ce*y)/((x^2+y^2)^1.5);"
-    );
-    pendulum.setParameter("ce", 1.0);
-    pendulum.setParameter("cs", 0.00001);
+struct simulation {
+    Map *map;
+    Solver *solver;
+    Vector curr;
+    num t;
+
+    struct timestamp max;
+    struct timestamp last[3];
+
+    bool isMaximumFound;
+    num angle;
+};
+
+struct simulation setupSim() {
+    struct simulation result = {
+        .map = new Map(
+            "time:t;"
+            "var:"
+                "x,"
+                "y,"
+                "dx,"
+                "dy;"
+            "par:"
+                "ce,"
+                "cs;"
+            "fun:"
+                "dx,"
+                "dy,"
+                "-(ce*x+cs*dy)/((x^2+y^2)^1.5),"
+                "(cs*dx-ce*y)/((x^2+y^2)^1.5);"
+        )
+    };
+
+    result.map->setParameter("ce", 1.0);
+    result.map->setParameter("cs", 0.00001);
 
     uint32_t order = 100;
 
-    Solver solver{pendulum, order};
+    result.solver = new Solver{*result.map, order};
+    result.solver->setStep(0.00001);
 
-    solver.setStep(0.00001);
+    return result;
+}
 
-    Vector curr{1.0, 0.0, 0.0, data.init};
-    num t = 0.0;
-
-    struct timestamp max = {
-        .pos = curr,
-        .r = 1
+void initSim(struct simulation *sim, Vector init) {
+    struct timestamp initial = {
+        .pos = init,
+        .r = 1,
+        .t = 0
     };
 
-    struct timestamp last[3] = { 
-        { curr, 1, 0 }, 
-        { curr, 1, 0 }, 
-        { curr, 1, 0 }, 
+    sim->curr = init;
+    sim->t = 0.0;
+    sim->max = initial;
+    sim->last[0] = initial;
+    sim->last[1] = initial;
+    sim->last[2] = initial;
+    sim->isMaximumFound = 0;
+    sim->angle = 0;
+}
+
+void stepSim(struct simulation *sim) {
+    sim->curr = (*sim->solver)(sim->t, sim->curr);
+
+    sim->last[2] = sim->last[1];
+    sim->last[1] = sim->last[0];
+    sim->last[0] = {
+        .pos = sim->curr,
+        .r = sqrt(pow(sim->curr[0], 2) + pow(sim->curr[1], 2)),
+        .t = sim->t
     };
 
-    std::vector<struct data> temp;
+    if (sim->last[1].r > sim->last[2].r && sim->last[1].r >= sim->last[0].r) {
+        sim->isMaximumFound = true;
+        sim->angle = getAngle(sim->max.pos, sim->last[1].pos);
 
-    do {
-        curr = solver(t, curr);
-
-        last[2] = last[1];
-        last[1] = last[0];
-        last[0] = {
-            .pos = curr,
-            .r = sqrt(curr[0] * curr[0] + curr[1] * curr[1]),
-            .t = t
+        sim->max = {
+            .pos = sim->last[1].pos,
+            .r = std::max(sim->last[1].r, sim->max.r),
+            .t = sim->last[1].t
         };
-
-        temp.emplace_back((struct data) {
-            .t = t,
-            .pos = { curr[0], curr[1] }
-        });
- 
-        if (last[1].r >= last[2].r && last[1].r >= last[0].r) {
-            std::print("\33[2K\rMax Detected at {} - {:.6}\n", last[1].t, getAngle(
-                (num[]) { max.pos[0], max.pos[1] }, 
-                (num[]) { last[1].pos[0], last[1].pos[1] }
-            ));
-
-            max = {
-                .pos = last[1].pos,
-                .r = std::max(last[1].r, max.r)
-            };
-        }
-
-        if (data.isDrawOrdered == false && data.access.try_lock()) {
-            data.isDrawOrdered = true;
-
-            for(auto &e : temp) {
-                data.array.push_back(e);
-            }
-            temp.clear();
-            data.access.unlock();
-
-            data.drawOrderMessager.notify_all();
-        }
-        std::print("\r{:.6f}: x={:.6f}, y={:.6f}, dx={:.6f}, dy={:.6f}, max={:.6f}, curr={:.6f}", t, curr[0], curr[1], curr[2], curr[3], max.r, last[0].r);
-    } while(t < 20'000);
-
-    data.access.lock();
-    data.isFinished = true;
-    data.isDrawOrdered = true;
-
-    for(auto &e : temp) {
-        data.array.push_back(e);
     }
-
-    temp.clear();
-    data.access.unlock();
-
-    data.drawOrderMessager.notify_all();
 }

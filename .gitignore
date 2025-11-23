@@ -2,3 +2,4 @@ __cmake_systeminformation/
 build/
 Debug/
 .cache/
+neovim.json
