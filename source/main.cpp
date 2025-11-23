@@ -8,7 +8,8 @@ int main(int argc, char **argv) {
         .init = argc > 1 ? atof(argv[1]) : 0.06
     };
 
-    trajectory(data);
+    //trajectory(data);
+    amplitude(data);
 
     return 0;
 }
