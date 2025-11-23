@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include <condition_variable>
 #include <mutex>
 #include <atomic>
@@ -15,7 +13,6 @@ struct commonData {
     std::mutex access;
     std::mutex drawMutex;
 
-    num init;
-
+    void *data;
     void *array;
 };

@@ -1,17 +1,8 @@
-#include <print>
-
-#include <capd/capdlib.h>
-
-#include "common.h"
+#include "simulation.hpp"
 
 static num toDeg(num rad) {
     return 180 * rad / M_PI;
 }
-
-typedef capd::vectalg::Matrix<num, 0, 0> Matrix;
-typedef capd::map::Map<Matrix> Map;
-typedef capd::dynsys::BasicOdeSolver<Map> Solver;
-typedef capd::vectalg::Vector<num, 0> Vector;
 
 static num getAngle(Vector pos1, Vector pos2) {
     num x1 = pos1[0];
@@ -26,25 +17,6 @@ static num getAngle(Vector pos1, Vector pos2) {
 
     return toDeg(rad);
 }
-
-struct timestamp {
-    Vector pos;
-    num r;
-    num t;
-};
-
-struct simulation {
-    Map *map;
-    Solver *solver;
-    Vector curr;
-    num t;
-
-    struct timestamp max;
-    struct timestamp last[3];
-
-    bool isMaximumFound;
-    num angle;
-};
 
 struct simulation setupSim() {
     struct simulation result = {

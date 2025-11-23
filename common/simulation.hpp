@@ -30,7 +30,8 @@ struct simulation setupSim();
 void initSim(struct simulation *sim, Vector init);
 void stepSim(struct simulation *sim);
 
-void tryOffload(struct commonData &data, auto &src, auto &dest) {
+template <typename T>
+void tryOffload(struct commonData &data, std::vector<T> &src, std::vector<T> *dest) {
     if (data.isDrawOrdered == false && data.access.try_lock()) {
         data.isDrawOrdered = true;
 
@@ -38,13 +39,14 @@ void tryOffload(struct commonData &data, auto &src, auto &dest) {
             dest->push_back(e);
         }
         src.clear();
-        data.access.unlock();
 
+        data.access.unlock();
         data.drawOrderMessager.notify_all();
     }
 }
 
-void offload(struct commonData &data, auto &src, auto &dest) {
+template <typename T>
+void offload(struct commonData &data, std::vector<T> &src, std::vector<T> *dest) {
     data.access.lock();
     data.isFinished = true;
     data.isDrawOrdered = true;
@@ -55,6 +57,5 @@ void offload(struct commonData &data, auto &src, auto &dest) {
     src.clear();
 
     data.access.unlock();
-
     data.drawOrderMessager.notify_all();
 }

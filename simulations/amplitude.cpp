@@ -3,26 +3,33 @@
 #include "simulation.hpp"
 #include "draw.hpp"
 
-struct data2 {
+struct data {
     num y0;
     num angle;
+};
+
+struct init {
+    num start;
+    num end;
+    num inc;
 };
 
 static void simulation(struct commonData &data) {
     struct simulation sim = setupSim();
 
-    std::vector<struct data2> temp;
-    std::vector<struct data2> *array = (std::vector<struct data2> *)data.array;
+    std::vector<struct data> temp;
+    std::vector<struct data> *array = (std::vector<struct data> *)data.array;
 
-    for (num i = 0.0514; i < 1.0; i += 0.0002) {
+    struct init init = *(struct init *)data.data;
+
+    for (num i = init.start; i < init.end; i += init.inc) {
         initSim(&sim, { 1.0, 0.0, 0.0, i });
 
         do {
             stepSim(&sim);
-
         } while (false == sim.isMaximumFound);
 
-        temp.emplace_back((struct data2) {
+        temp.emplace_back((struct data) {
             .y0 = i,
             .angle = sim.angle
         });
@@ -33,15 +40,13 @@ static void simulation(struct commonData &data) {
     offload(data, temp, array);
 }
 
-FILE* createPlotP(const char *name);
-
 static void draw(struct commonData &data, bool end) {
-    static FILE* gp{createPlotP("Trajektoria")};
-    auto array = (std::vector<struct data2> *)data.array;
+    static FILE* gp{createPlotP("Kąt między maksymalnymi wychyleniami")};
+    auto array = (std::vector<struct data> *)data.array;
 
     if (end) pclose(gp);
     else {
-        std::print(gp, "plot '-' with lines title 'orbita'\n");
+        std::print(gp, "plot '-' with lines title 'kąt'\n");
         for (auto& p : *array) {
             std::print(gp, "{} {}\n", p.y0, p.angle);
         }
@@ -51,8 +56,18 @@ static void draw(struct commonData &data, bool end) {
     }
 }
 
-void amplitude(struct commonData &data) {
-    std::vector<data2> array;
+int main(int argc, char **argv) {
+    struct init init = {
+        .start = argc > 1 ? atof(argv[1]) : 0.06,
+        .end = argc > 2 ? atof(argv[2]) : 1,
+        .inc = argc > 3 ? atof(argv[3]) : 0.005
+    };
+
+    struct commonData data{
+        .data = &init
+    };
+
+    std::vector<struct data> array;
     void (*drawA[])(struct commonData &, bool) = {
         draw,
     };
@@ -65,4 +80,6 @@ void amplitude(struct commonData &data) {
 
     writer.join();
     reader.join();
+
+    return 0;
 }

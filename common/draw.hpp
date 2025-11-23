@@ -1,8 +1,7 @@
-#include <math.h>
-
 #include "common.h"
 
 FILE* createPlot(const char *name);
+FILE* createPlotP(const char *name);
 
 template <std::size_t N>
 void runThreads(struct commonData &data, void (*draw[N])(struct commonData &, bool)) {

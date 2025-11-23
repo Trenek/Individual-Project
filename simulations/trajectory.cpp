@@ -8,13 +8,19 @@ struct data {
     num pos[2];
 };
 
+struct init {
+    num y0;
+};
+
 static void simulation(struct commonData &data) {
     struct simulation sim = setupSim();
 
     std::vector<struct data> temp;
     std::vector<struct data> *array = (std::vector<struct data> *)data.array;
 
-    initSim(&sim, { 1.0, 0.0, 0.0, data.init });
+    struct init init = *(struct init *)data.data;
+
+    initSim(&sim, { 1.0, 0.0, 0.0, init.y0 });
 
     do {
         stepSim(&sim);
@@ -23,13 +29,13 @@ static void simulation(struct commonData &data) {
             .t = sim.t,
             .pos = { sim.curr[0], sim.curr[1] }
         });
-
+    
+        tryOffload(data, temp, array);
+#ifdef DEBUG
         if (sim.isMaximumFound) {
             sim.isMaximumFound = false;
             std::print("\33[2K\rMax Detected at {} - {:.6}\n", sim.last[1].t, sim.angle);
         }
-
-        tryOffload(data, temp, array);
 
         std::print("\r{:} {:.6f}: x={:.6f}, y={:.6f}, dx={:.6f}, dy={:.6f}, max={:.6f}, curr={:.6f}",
             sim.isMaximumFound,
@@ -41,6 +47,7 @@ static void simulation(struct commonData &data) {
             sim.max.r, 
             sim.last[0].r
         );
+#endif
     } while(sim.t < 20'000);
 
     offload(data, temp, array);
@@ -80,12 +87,12 @@ static void drawDistance(struct commonData &data, bool end) {
 }
 
 static void drawSomething(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Cos")};
+    static FILE* gp{createPlot("Coś")};
     auto array = (std::vector<struct data> *)data.array;
 
     if (end) pclose(gp);
     else {
-        std::print(gp, "plot '-' with lines title 'wychylenie'\n");
+        std::print(gp, "plot '-' with lines title 'śmieszne'\n");
         for (auto& p : *array) {
             num curr = p.pos[0] * p.pos[1];
 
@@ -96,7 +103,15 @@ static void drawSomething(struct commonData &data, bool end) {
     }
 }
 
-void trajectory(struct commonData &data) {
+int main(int argc, char **argv) {
+    struct init init {
+        .y0 = argc > 1 ? atof(argv[1]) : 0.06
+    };
+
+    struct commonData data{
+        .data = &init
+    };
+
     std::vector<struct data> array;
     void (*drawA[])(struct commonData &, bool) = {
         drawTrajectory,
@@ -111,4 +126,6 @@ void trajectory(struct commonData &data) {
 
     writer.join();
     reader.join();
+
+    return 0;
 }
