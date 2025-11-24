@@ -6,7 +6,7 @@ list(TRANSFORM SOURCE_DIRECTORIES APPEND "/*.cpp" OUTPUT_VARIABLE SOURCE_FILES)
 file(GLOB SOURCE_FILES ${SOURCE_FILES})
 
 add_library(Common ${SOURCE_FILES})
-target_link_libraries(Common ${LINK_LIBRARIES})
+target_link_libraries(Common ${LINK_LIBRARIES} -lstdc++exp)
 target_include_directories(Common PUBLIC
     ${INCLUDE_DIRECTORIES}
     ${SOURCE_DIRECTORIES}
