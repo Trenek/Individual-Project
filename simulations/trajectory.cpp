@@ -3,7 +3,7 @@
 #include "simulation.hpp"
 #include "draw.hpp"
 
-struct data {
+struct toDraw {
     num t;
     num pos[2];
 };
@@ -15,8 +15,8 @@ struct init {
 static void simulation(struct commonData &data) {
     struct simulation sim = setupSim();
 
-    std::vector<struct data> temp;
-    std::vector<struct data> *array = (std::vector<struct data> *)data.array;
+    std::vector<struct toDraw> temp;
+    std::vector<struct toDraw> *array = (std::vector<struct toDraw> *)data.array;
 
     struct init init = *(struct init *)data.data;
 
@@ -25,7 +25,7 @@ static void simulation(struct commonData &data) {
     do {
         stepSim(&sim);
 
-        temp.emplace_back((struct data) {
+        temp.emplace_back((struct toDraw) {
             .t = sim.t,
             .pos = { sim.curr[0], sim.curr[1] }
         });
@@ -55,7 +55,7 @@ static void simulation(struct commonData &data) {
 
 static void drawTrajectory(struct commonData &data, bool end) {
     static FILE* gp{createPlot("Trajektoria")};
-    auto array = (std::vector<struct data> *)data.array;
+    auto array = (std::vector<struct toDraw> *)data.array;
 
     if (end) pclose(gp);
     else {
@@ -71,7 +71,7 @@ static void drawTrajectory(struct commonData &data, bool end) {
 
 static void drawDistance(struct commonData &data, bool end) {
     static FILE* gp{createPlot("Wychylenie")};
-    auto array = (std::vector<struct data> *)data.array;
+    auto array = (std::vector<struct toDraw> *)data.array;
 
     if (end) pclose(gp);
     else {
@@ -88,7 +88,7 @@ static void drawDistance(struct commonData &data, bool end) {
 
 static void drawSomething(struct commonData &data, bool end) {
     static FILE* gp{createPlot("Coś")};
-    auto array = (std::vector<struct data> *)data.array;
+    auto array = (std::vector<struct toDraw> *)data.array;
 
     if (end) pclose(gp);
     else {
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
         .data = &init
     };
 
-    std::vector<struct data> array;
+    std::vector<struct toDraw> array;
     void (*drawA[])(struct commonData &, bool) = {
         drawTrajectory,
         drawDistance,

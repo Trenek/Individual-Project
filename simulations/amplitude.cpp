@@ -3,7 +3,7 @@
 #include "simulation.hpp"
 #include "draw.hpp"
 
-struct data {
+struct toDraw {
     num y0;
     num angle;
 };
@@ -17,8 +17,8 @@ struct init {
 static void simulation(struct commonData &data) {
     struct simulation sim = setupSim();
 
-    std::vector<struct data> temp;
-    std::vector<struct data> *array = (std::vector<struct data> *)data.array;
+    std::vector<struct toDraw> temp;
+    std::vector<struct toDraw> *array = (std::vector<struct toDraw> *)data.array;
 
     struct init init = *(struct init *)data.data;
 
@@ -29,7 +29,7 @@ static void simulation(struct commonData &data) {
             stepSim(&sim);
         } while (false == sim.isMaximumFound);
 
-        temp.emplace_back((struct data) {
+        temp.emplace_back((struct toDraw) {
             .y0 = i,
             .angle = sim.angle
         });
@@ -42,7 +42,7 @@ static void simulation(struct commonData &data) {
 
 static void draw(struct commonData &data, bool end) {
     static FILE* gp{createPlotP("Kąt między maksymalnymi wychyleniami")};
-    auto array = (std::vector<struct data> *)data.array;
+    auto array = (std::vector<struct toDraw> *)data.array;
 
     if (end) pclose(gp);
     else {
@@ -59,7 +59,7 @@ static void draw(struct commonData &data, bool end) {
 int main(int argc, char **argv) {
     struct init init = {
         .start = argc > 1 ? atof(argv[1]) : 0.06,
-        .end = argc > 2 ? atof(argv[2]) : 1,
+        .end = argc > 2 ? atof(argv[2]) : 1.0,
         .inc = argc > 3 ? atof(argv[3]) : 0.005
     };
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
         .data = &init
     };
 
-    std::vector<struct data> array;
+    std::vector<struct toDraw> array;
     void (*drawA[])(struct commonData &, bool) = {
         draw,
     };
