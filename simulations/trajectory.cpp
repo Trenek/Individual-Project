@@ -3,104 +3,59 @@
 #include "simulation.hpp"
 #include "draw.hpp"
 
-struct toDraw {
-    num t;
-    num pos[2];
-};
-
 struct init {
     num y0;
 };
 
 static void simulation(struct commonData &data) {
     struct simulation sim = setupSim();
-
-    std::vector<struct toDraw> temp;
-    std::vector<struct toDraw> *array = (std::vector<struct toDraw> *)data.array;
-
     struct init init = *(struct init *)data.data;
 
+    struct thing thing[] = {
+        {
+            .name = "Trajektoria", 
+            .file = "traj.dat"
+        },
+        { 
+            .name = "Wychylenie", 
+            .file = "wych.dat"
+        },
+        // { 
+        //     .name = "Cos",
+        //     .file = "cos.dat"
+        // }
+    };
+    constexpr size_t qThing = sizeof(thing) / sizeof(struct thing);
+
+    cleanup(qThing, thing);
+
+    FILE *traj = fopen("traj.dat", "w");
+    FILE *wych = fopen("wych.dat", "w");
+    // FILE *cos = fopen("cos.dat", "w");
+    
     initSim(&sim, { 1.0, 0.0, 0.0, init.y0 });
 
+    stepSim(&sim);
+
+    std::print(traj, "{} {}\n", sim.curr[0], sim.curr[1]);
+    std::print(wych, "{} {}\n", sim.t, sqrt(sim.curr[0] * sim.curr[0] + sim.curr[1] * sim.curr[1]));
+    std::fflush(traj);
+    std::fflush(wych);
+    // std::print(cos, "{} {}\n", sim.t, sim.curr[0] * sim.curr[1]);
+    createPlot(qThing, thing);
     do {
         stepSim(&sim);
 
-        temp.emplace_back((struct toDraw) {
-            .t = sim.t,
-            .pos = { sim.curr[0], sim.curr[1] }
-        });
-    
-        tryOffload(data, temp, array);
-#ifdef DEBUG
-        if (sim.isMaximumFound) {
-            sim.isMaximumFound = false;
-            std::print("\33[2K\rMax Detected at {} - {:.6}\n", sim.last[1].t, sim.angle);
-        }
-
-        std::print("\r{:} {:.6f}: x={:.6f}, y={:.6f}, dx={:.6f}, dy={:.6f}, max={:.6f}, curr={:.6f}",
-            sim.isMaximumFound,
-            sim.t, 
-            sim.curr[0], 
-            sim.curr[1], 
-            sim.curr[2], 
-            sim.curr[3], 
-            sim.max.r, 
-            sim.last[0].r
-        );
-#endif
+        std::print(traj, "{} {}\n", sim.curr[0], sim.curr[1]);
+        std::print(wych, "{} {}\n", sim.t, sqrt(sim.curr[0] * sim.curr[0] + sim.curr[1] * sim.curr[1]));
+        // std::print(cos, "{} {}\n", sim.t, sim.curr[0] * sim.curr[1]);
     } while(sim.t < 20'000);
 
-    offload(data, temp, array);
-}
+    fclose(traj);
+    fclose(wych);
+    // fclose(cos);
 
-static void drawTrajectory(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Trajektoria")};
-    auto array = (std::vector<struct toDraw> *)data.array;
-
-    if (end) pclose(gp);
-    else {
-        std::print(gp, "plot '-' with lines title 'orbita'\n");
-        for (auto& p : *array) {
-            std::print(gp, "{} {}\n", p.pos[0], p.pos[1]);
-        }
-        std::print(gp, "e\n");
-
-        fflush(gp);
-    }
-}
-
-static void drawDistance(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Wychylenie")};
-    auto array = (std::vector<struct toDraw> *)data.array;
-
-    if (end) pclose(gp);
-    else {
-        std::print(gp, "plot '-' with lines title 'wychylenie'\n");
-        for (auto& p : *array) {
-            num curr = sqrt(p.pos[0] * p.pos[0] + p.pos[1] * p.pos[1]);
-
-            std::print(gp, "{} {}\n", p.t, curr);
-        }
-        std::print(gp, "e\n");
-        fflush(gp);
-    }
-}
-
-static void drawSomething(struct commonData &data, bool end) {
-    static FILE* gp{createPlot("Coś")};
-    auto array = (std::vector<struct toDraw> *)data.array;
-
-    if (end) pclose(gp);
-    else {
-        std::print(gp, "plot '-' with lines title 'śmieszne'\n");
-        for (auto& p : *array) {
-            num curr = p.pos[0] * p.pos[1];
-
-            std::print(gp, "{} {}\n", p.t, curr);
-        }
-        std::print(gp, "e\n");
-        fflush(gp);
-    }
+    destroyPlot(qThing, thing);
 }
 
 int main(int argc, char **argv) {
@@ -112,20 +67,7 @@ int main(int argc, char **argv) {
         .data = &init
     };
 
-    std::vector<struct toDraw> array;
-    void (*drawA[])(struct commonData &, bool) = {
-        drawTrajectory,
-        drawDistance,
-        // drawSomething
-    };
-    constexpr size_t qDraw = sizeof(drawA) / sizeof(void *);
-    data.array = &array;
-
-    std::thread writer(simulation, std::ref(data));
-    std::thread reader(drawFun<qDraw>, std::ref(data), drawA);
-
-    writer.join();
-    reader.join();
+    simulation(data);
 
     return 0;
 }

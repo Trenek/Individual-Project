@@ -41,10 +41,10 @@ struct simulation setupSim() {
     result.map->setParameter("ce", 1.0);
     result.map->setParameter("cs", 0.00001);
 
-    uint32_t order = 100;
+    uint32_t order = 10;
 
     result.solver = new Solver{*result.map, order};
-    result.solver->setStep(0.00001);
+    result.solver->setStep(0.0000001);
 
     return result;
 }

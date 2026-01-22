@@ -1,11 +1,16 @@
 #include <capd/capdlib.h>
 
-#include "common.h"
+typedef long double num;
 
 typedef capd::vectalg::Matrix<num, 0, 0> Matrix;
 typedef capd::map::Map<Matrix> Map;
 typedef capd::dynsys::BasicOdeSolver<Map> Solver;
 typedef capd::vectalg::Vector<num, 0> Vector;
+
+struct commonData {
+    void *data;
+    void *array;
+};
 
 struct timestamp {
     Vector pos;
@@ -29,33 +34,3 @@ struct simulation {
 struct simulation setupSim();
 void initSim(struct simulation *sim, Vector init);
 void stepSim(struct simulation *sim);
-
-template <typename T>
-void tryOffload(struct commonData &data, std::vector<T> &src, std::vector<T> *dest) {
-    if (data.isDrawOrdered == false && data.access.try_lock()) {
-        data.isDrawOrdered = true;
-
-        for(auto &e : src) {
-            dest->push_back(e);
-        }
-        src.clear();
-
-        data.access.unlock();
-        data.drawOrderMessager.notify_all();
-    }
-}
-
-template <typename T>
-void offload(struct commonData &data, std::vector<T> &src, std::vector<T> *dest) {
-    data.access.lock();
-    data.isFinished = true;
-    data.isDrawOrdered = true;
-
-    for(auto &e : src) {
-        dest->push_back(e);
-    }
-    src.clear();
-
-    data.access.unlock();
-    data.drawOrderMessager.notify_all();
-}
