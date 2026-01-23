@@ -6,16 +6,14 @@ static num toDeg(num rad) {
 
 static num getAngle(Vector pos1, Vector pos2) {
     num x1 = pos1[0];
-    num x2 = pos2[0];
     num y1 = pos1[1];
+    num x2 = pos2[0];
     num y2 = pos2[1];
 
-    num r1 = sqrt(x1 * x1 + y1 * y1);
-    num r2 = sqrt(x2 * x2 + y2 * y2);
+    num dot = x1 * x2 + y1 * y2;
+    num cross = x1 * y2 - y1 * x2;
 
-    num rad = acos((x1 * x2 + y1 * y2) / (r1 * r2));
-
-    return toDeg(rad);
+    return(atan2(cross, dot));
 }
 
 struct simulation setupSim() {

@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     struct init init = {
         .start = argc > 1 ? atof(argv[1]) : -0.10,
         .end =   argc > 2 ? atof(argv[2]) :  0.10,
-        .inc =   argc > 3 ? atof(argv[3]) :  0.005
+        .inc =   argc > 3 ? atof(argv[3]) :  0.0005
     };
 
     struct commonData data{
