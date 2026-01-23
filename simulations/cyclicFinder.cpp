@@ -52,7 +52,11 @@ void findBetterApproximation(struct simulation *sim, struct state left, struct s
         .dy0 = (left.dy0 + right.dy0) / 2
     };
 
-    if (fabs(360.0 / whole - left.angle) > 10e-5 && fabs(360.0 / whole - right.angle)) {
+    if (fabs(right.dy0 - left.dy0) < 10e-20) {
+        findAngle(sim, inBetween.dy0);
+        std::print("Found Approximated {} velocity, {} angle, actual = {}\n", inBetween.dy0, sim->angle, 360.0 / whole);
+    }
+    else if (fabs(360.0 / whole - left.angle) > 10e-5 && fabs(360.0 / whole - right.angle)) {
         printWait();
         findAngle(sim, inBetween.dy0);
         inBetween.angle = sim->angle;
@@ -88,7 +92,7 @@ void findCyclic(struct simulation *sim, struct state curr, struct state prev) {
         }
     }
     else {
-        std::print("Nie jestem wybrancem :((\n");
+        //std::print("Nie jestem wybrancem :((\n");
     }
 }
 
@@ -116,7 +120,7 @@ static void simulation(struct commonData &data) {
 
     std::print(amp, "{} {}\n", init.start, sim.angle);
     std::fflush(amp);
-    createPlot(qThing, thing);
+    createPlotU(qThing, thing);
     for (num i = init.start + init.inc; i < init.end; i += init.inc) {
         prevAngle = nextPrevAngle;
         findAngle(&sim, i);
@@ -128,10 +132,7 @@ static void simulation(struct commonData &data) {
         );
 
         std::print(amp, "{} {}\n", i, sim.angle);
-        std::print(stdout, "{} {}\n", i, sim.angle);
-
         std::fflush(amp);
-        std::fflush(stdout);
     }
 
     destroyPlot(qThing, thing);
