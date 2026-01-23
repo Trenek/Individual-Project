@@ -53,14 +53,24 @@ void initSim(struct simulation *sim, Vector init) {
         .r = 1,
         .t = 0
     };
+    struct timestamp nan = {
+        .pos = {
+            NAN, NAN
+        },
+        .r = NAN,
+        .t = NAN
+    };
 
     sim->curr = init;
     sim->t = 0.0;
-    sim->max = initial;
-    sim->last[0] = initial;
-    sim->last[1] = initial;
-    sim->last[2] = initial;
-    sim->isMaximumFound = 0;
+    sim->last[0] = nan;
+    sim->last[1] = nan;
+    sim->last[2] = nan;
+    sim->firstMax = nan;
+    sim->secondMax = nan;
+    sim->isSecondMaxFound = false;
+    sim->isFirstMaxFound = false;
+    sim->isAngleFound = false;
     sim->angle = 0;
 }
 
@@ -76,13 +86,17 @@ void stepSim(struct simulation *sim) {
     };
 
     if (sim->last[1].r > sim->last[2].r && sim->last[1].r >= sim->last[0].r) {
-        sim->isMaximumFound = true;
-        sim->angle = getAngle(sim->max.pos, sim->last[1].pos);
+        if (sim->isFirstMaxFound) {
+            sim->isSecondMaxFound = true;
+            sim->secondMax = sim->last[1];
 
-        sim->max = {
-            .pos = sim->last[1].pos,
-            .r = std::max(sim->last[1].r, sim->max.r),
-            .t = sim->last[1].t
-        };
+            sim->isAngleFound = true;
+            sim->angle = getAngle(sim->firstMax.pos, sim->secondMax.pos);
+        }
+        else {
+            sim->isFirstMaxFound = true;
+            sim->firstMax = sim->last[1];
+        }
     }
+
 }

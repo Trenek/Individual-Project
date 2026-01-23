@@ -19,7 +19,7 @@ void findAngle(struct simulation *sim, num dy0) {
 
     do {
         stepSim(sim);
-    } while (false == sim->isMaximumFound);
+    } while (false == sim->isAngleFound);
 }
 
 int getWhole(num curr, num prev) {

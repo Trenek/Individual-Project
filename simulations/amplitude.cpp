@@ -14,7 +14,7 @@ void findAngle(struct simulation *sim, num dy0) {
 
     do {
         stepSim(sim);
-    } while (false == sim->isMaximumFound);
+    } while (false == sim->isAngleFound);
 }
 
 static void simulation(struct commonData &data) {
@@ -42,10 +42,7 @@ static void simulation(struct commonData &data) {
         findAngle(&sim, i);
 
         std::print(amp, "{} {}\n", i, sim.angle);
-        std::print(stdout, "{} {}\n", i, sim.angle);
-
         std::fflush(amp);
-        std::fflush(stdout);
     }
 
     destroyPlot(qThing, thing);

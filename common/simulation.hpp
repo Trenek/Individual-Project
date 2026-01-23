@@ -24,10 +24,15 @@ struct simulation {
     Vector curr;
     num t;
 
-    struct timestamp max;
+    bool isAngleFound;
+    bool isSecondMaxFound;
+    struct timestamp secondMax;
+
+    bool isFirstMaxFound;
+    struct timestamp firstMax;
+
     struct timestamp last[3];
 
-    bool isMaximumFound;
     num angle;
 };
 
