@@ -37,7 +37,7 @@ static void simulation(struct commonData &data) {
 
     std::print(amp, "{} {}\n", init.start, sim.angle);
     std::fflush(amp);
-    createPlot(qThing, thing);
+    createPlotU(qThing, thing);
     for (num i = init.start + init.inc; i < init.end; i += init.inc) {
         findAngle(&sim, i);
 

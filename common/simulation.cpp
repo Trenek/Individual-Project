@@ -13,7 +13,7 @@ static num getAngle(Vector pos1, Vector pos2) {
     num dot = x1 * x2 + y1 * y2;
     num cross = x1 * y2 - y1 * x2;
 
-    return(atan2(cross, dot));
+    return(toDeg(atan2(cross, dot)));
 }
 
 struct simulation setupSim() {

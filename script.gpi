@@ -1,0 +1,27 @@
+set term qt 1 size 800,600
+set title "Kąt między maksymalnymi wychyleniami"
+set grid xtics
+set grid ytics
+
+set xlabel 'x'
+set ylabel 'y'
+set grid
+
+prev = NaN
+wrap = 0
+unwrap(y) = ( \
+    (prev == prev) ? \
+        (wrap = wrap + round((y - prev)/360.0)) : \
+        (wrap = 0), \
+    prev = y, \
+    y - 360*wrap \
+)
+
+pause 1
+plot "amp.dat" using 1:(unwrap($2)) with lines
+while (1) {
+    pause 1
+    prev = NaN
+    wrap = 0
+    replot
+}
