@@ -14,6 +14,8 @@ struct init {
     num inc;
 };
 
+int C = 1;
+
 void findAngle(struct simulation *sim, num dy0) {
     initSim(sim, { 1.0, 0.0, 0.0, dy0 });
 
@@ -24,10 +26,10 @@ void findAngle(struct simulation *sim, num dy0) {
 
 int getWhole(num curr, num prev) {
     int whole = 2;
-    int maxWhole = 100;
+    int maxWhole = 100 * C;
 
-    while (curr < 360.0 / whole && prev < 360.0 / whole && whole < maxWhole) whole += 1;
-    if    (curr > 360.0 / whole && prev > 360.0 / whole) whole = -1;
+    while (curr < C * 360.0 / whole && prev < C * 360.0 / whole && whole < maxWhole) whole += 1;
+    if    (curr > C * 360.0 / whole && prev > C * 360.0 / whole) whole = -1;
     if    (whole >= maxWhole) whole = -1;
 
     return whole;
@@ -54,14 +56,14 @@ void findBetterApproximation(struct simulation *sim, struct state left, struct s
 
     if (fabs(right.dy0 - left.dy0) < 10e-20) {
         findAngle(sim, inBetween.dy0);
-        std::print("Found Approximated {} velocity, {} angle, actual = {}\n", inBetween.dy0, sim->angle, 360.0 / whole);
+        std::print("{} Found Approximated {} velocity, {} angle, actual = {}\n", C, inBetween.dy0, sim->angle, C * 360.0 / whole);
     }
-    else if (fabs(360.0 / whole - left.angle) > 10e-5 && fabs(360.0 / whole - right.angle)) {
+    else if (fabs(C * 360.0 / whole - left.angle) > 10e-5 && fabs(C * 360.0 / whole - right.angle)) {
         printWait();
         findAngle(sim, inBetween.dy0);
         inBetween.angle = sim->angle;
 
-        if (sim->angle < 360.0 / whole) {
+        if (sim->angle < C * 360.0 / whole) {
             findBetterApproximation(sim, inBetween, right, whole);
         }
         else {
@@ -69,11 +71,11 @@ void findBetterApproximation(struct simulation *sim, struct state left, struct s
         }
     }
     else {
-        if (fabs(360.0 / whole - left.angle) <= 10e-5) {
-            std::print("Found {} velocity, {} angle\n", left.dy0, left.angle);
+        if (fabs(C * 360.0 / whole - left.angle) <= 10e-5) {
+            std::print("{} Found {} velocity, {} angle\n", C, left.dy0, left.angle);
         }
         else {
-            std::print("Found {} velocity, {} angle\n", right.dy0, right.angle);
+            std::print("{} Found {} velocity, {} angle\n", C, right.dy0, right.angle);
         }
     }
 }
@@ -84,7 +86,7 @@ void findCyclic(struct simulation *sim, struct state curr, struct state prev) {
 
     if (whole > 0) {
         printWait();
-        if (curr.angle < 360.0 / whole) {
+        if (curr.angle < C * 360.0 / whole) {
             findBetterApproximation(sim, curr, prev, whole);
         }
         else {
@@ -92,7 +94,14 @@ void findCyclic(struct simulation *sim, struct state curr, struct state prev) {
         }
     }
     else {
-        //std::print("Nie jestem wybrancem :((\n");
+        if (C != 10) {
+            C += 1;
+            findCyclic(sim, curr, prev);
+        }
+        else {
+            std::print("Nie jestem wybrancem :((\n");
+        }
+        C = 1;
     }
 }
 
