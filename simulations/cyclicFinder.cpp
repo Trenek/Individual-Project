@@ -149,7 +149,7 @@ static void simulation(struct commonData &data) {
 
 int main(int argc, char **argv) {
     struct init init = {
-        .start = argc > 1 ? atof(argv[1]) : 0.06,
+        .start = argc > 1 ? atof(argv[1]) : -1.0,
         .end = argc > 2 ? atof(argv[2]) : 1.0,
         .inc = argc > 3 ? atof(argv[3]) : 0.005
     };

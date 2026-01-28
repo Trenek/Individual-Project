@@ -50,8 +50,8 @@ static void simulation(struct commonData &data) {
 
 int main(int argc, char **argv) {
     struct init init = {
-        .start = argc > 1 ? atof(argv[1]) : -0.10,
-        .end =   argc > 2 ? atof(argv[2]) :  0.10,
+        .start = argc > 1 ? atof(argv[1]) : -1.0,
+        .end =   argc > 2 ? atof(argv[2]) :  1.5,
         .inc =   argc > 3 ? atof(argv[3]) :  0.0005
     };
 
