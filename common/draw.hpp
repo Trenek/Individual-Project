@@ -1,14 +1,35 @@
-#include <stdio.h>
+#include <print>
+#include <vector>
 
 struct thing {
-    FILE *fileDesc;
+    FILE *gnuplot;
+    FILE *dataFile;
     const char *name;
     const char *file;
+
+    const char *xName;
+    const char *yName;
+
+    void (*setGNUPlot)(int id, struct thing &drawer);
 };
 
-void createPlot(size_t qThing, struct thing thing[]);
-void createPlotP(size_t qThing, struct thing thing[]);
-void createPlotU(size_t qThing, struct thing thing[]);
-void destroyPlot(size_t qThing, struct thing thing[]);
+class gnuPlotManager {
+    bool isEnabled = false;
 
-void cleanup(size_t qThing, struct thing thing[]);
+public:
+    std::vector<struct thing> drawers;
+
+    gnuPlotManager(std::vector<struct thing> &&array, bool init = false);
+    ~gnuPlotManager();
+
+    template <typename... Args>
+    void print(size_t i, std::format_string<Args...> s, Args&&... args) {
+        std::print(this->drawers[i].dataFile, s, std::forward<Args>(args)...);
+    }
+
+    void fflush();
+    void removeData();
+    void initGNUPlot();
+};
+
+void setGNUPlotUnwrap(int num, struct thing &thing);

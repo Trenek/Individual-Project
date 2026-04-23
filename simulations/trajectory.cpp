@@ -1,17 +1,12 @@
-#include <print>
-
 #include "simulation.hpp"
 #include "draw.hpp"
 
-struct init {
-    num y0;
-};
+int main(int argc, char **argv) {
+    num y0 = argc > 1 ? atof(argv[1]) : 0.06;
 
-static void simulation(struct commonData &data) {
-    struct simulation sim = setupSim();
-    struct init init = *(struct init *)data.data;
+    struct simulation sim = setupSim(0.00001);
 
-    struct thing thing[] = {
+    class gnuPlotManager manager{{
         {
             .name = "Trajektoria", 
             .file = "traj.dat"
@@ -20,54 +15,22 @@ static void simulation(struct commonData &data) {
             .name = "Wychylenie", 
             .file = "wych.dat"
         },
-        // { 
-        //     .name = "Cos",
-        //     .file = "cos.dat"
-        // }
-    };
-    constexpr size_t qThing = sizeof(thing) / sizeof(struct thing);
-
-    cleanup(qThing, thing);
-
-    FILE *traj = fopen("traj.dat", "w");
-    FILE *wych = fopen("wych.dat", "w");
-    // FILE *cos = fopen("cos.dat", "w");
+    }, true};
     
-    initSim(&sim, { 1.0, 0.0, 0.0, init.y0 });
+    initSim(&sim, { 1.0, 0.0, 0.0, y0 });
 
     stepSim(&sim);
 
-    std::print(traj, "{} {}\n", sim.curr[0], sim.curr[1]);
-    std::print(wych, "{} {}\n", sim.t, sqrt(sim.curr[0] * sim.curr[0] + sim.curr[1] * sim.curr[1]));
-    std::fflush(traj);
-    std::fflush(wych);
-    // std::print(cos, "{} {}\n", sim.t, sim.curr[0] * sim.curr[1]);
-    createPlot(qThing, thing);
+    manager.print(0, "{} {}\n", sim.curr[0], sim.curr[1]);
+    manager.print(1, "{} {}\n", sim.t, sqrt(sim.curr[0] * sim.curr[0] + sim.curr[1] * sim.curr[1]));
+    manager.fflush();
+
     do {
         stepSim(&sim);
 
-        std::print(traj, "{} {}\n", sim.curr[0], sim.curr[1]);
-        std::print(wych, "{} {}\n", sim.t, sqrt(sim.curr[0] * sim.curr[0] + sim.curr[1] * sim.curr[1]));
-        // std::print(cos, "{} {}\n", sim.t, sim.curr[0] * sim.curr[1]);
+        manager.print(0, "{} {}\n", sim.curr[0], sim.curr[1]);
+        manager.print(1, "{} {}\n", sim.t, sqrt(sim.curr[0] * sim.curr[0] + sim.curr[1] * sim.curr[1]));
     } while(sim.t < 20'000);
-
-    fclose(traj);
-    fclose(wych);
-    // fclose(cos);
-
-    destroyPlot(qThing, thing);
-}
-
-int main(int argc, char **argv) {
-    struct init init {
-        .y0 = argc > 1 ? atof(argv[1]) : 0.06
-    };
-
-    struct commonData data{
-        .data = &init
-    };
-
-    simulation(data);
 
     return 0;
 }

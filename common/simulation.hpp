@@ -36,6 +36,6 @@ struct simulation {
     num angle;
 };
 
-struct simulation setupSim();
+struct simulation setupSim(double step);
 void initSim(struct simulation *sim, Vector init);
 void stepSim(struct simulation *sim);

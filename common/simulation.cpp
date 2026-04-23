@@ -16,7 +16,7 @@ static num getAngle(Vector pos1, Vector pos2) {
     return(toDeg(atan2(cross, dot)));
 }
 
-struct simulation setupSim() {
+struct simulation setupSim(double step) {
     struct simulation result = {
         .map = new Map(
             "time:t;"
@@ -42,7 +42,7 @@ struct simulation setupSim() {
     uint32_t order = 10;
 
     result.solver = new Solver{*result.map, order};
-    result.solver->setStep(0.0000001);
+    result.solver->setStep(step);
 
     return result;
 }

@@ -105,31 +105,31 @@ void findCyclic(struct simulation *sim, struct state curr, struct state prev) {
     }
 }
 
-static void simulation(struct commonData &data) {
-    struct simulation sim = setupSim();
-    struct init init = *(struct init *)data.data;
+int main(int argc, char **argv) {
+    struct init init = {
+        .start = argc > 1 ? atof(argv[1]) : 0.06,
+        .end = argc > 2 ? atof(argv[2]) : 1.0,
+        .inc = argc > 3 ? atof(argv[3]) : 0.005
+    };
 
-    struct thing thing[] = {
+    struct simulation sim = setupSim(0.0000001);
+    class gnuPlotManager manager{{
         {
             .name = "Kąt między maksymalnymi wychyleniami",
-            .file = "amp.dat"
+            .file = "amp.dat",
+            .setGNUPlot = setGNUPlotUnwrap,
         },
-    };
-    constexpr size_t qThing = sizeof(thing) / sizeof(struct thing);
+    }};
 
     num prevAngle = 0;
     num nextPrevAngle = 0;
 
-    cleanup(qThing, thing);
-
-    FILE *amp = fopen("amp.dat", "w");
-
     findAngle(&sim, init.start);
     nextPrevAngle = sim.angle;
 
-    std::print(amp, "{} {}\n", init.start, sim.angle);
-    std::fflush(amp);
-    createPlotU(qThing, thing);
+    manager.print(0, "{} {}\n", init.start, sim.angle);
+    manager.fflush();
+    manager.initGNUPlot();
     for (num i = init.start + init.inc; i < init.end; i += init.inc) {
         prevAngle = nextPrevAngle;
         findAngle(&sim, i);
@@ -140,25 +140,8 @@ static void simulation(struct commonData &data) {
             (struct state) { .angle = prevAngle, .dy0 = i - init.inc }
         );
 
-        std::print(amp, "{} {}\n", i, sim.angle);
-        std::fflush(amp);
+        manager.print(0, "{} {}\n", i, sim.angle);
     }
-
-    destroyPlot(qThing, thing);
-}
-
-int main(int argc, char **argv) {
-    struct init init = {
-        .start = argc > 1 ? atof(argv[1]) : 0.06,
-        .end = argc > 2 ? atof(argv[2]) : 1.0,
-        .inc = argc > 3 ? atof(argv[3]) : 0.005
-    };
-
-    struct commonData data{
-        .data = &init
-    };
-
-    simulation(data);
 
     return 0;
 }
