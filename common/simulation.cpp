@@ -16,28 +16,34 @@ static num getAngle(Vector pos1, Vector pos2) {
     return(toDeg(atan2(cross, dot)));
 }
 
+#define x 0
+#define y 1
+#define dx 2
+#define dy 3
+#define ce 0
+#define cs 1
+
+void orbitki(
+    capd::autodiff::Node &time, 
+    capd::autodiff::Node in[],
+    int dimIn,
+    capd::autodiff::Node out[], 
+    int dimOut, 
+    capd::autodiff::Node param[],
+    int noParam) {
+    out[x] = in[dx];
+    out[y] = in[dy];
+    out[dx] = - (param[ce] * in[x] + param[cs] * in[dy]) / (((in[x] ^ 2.0) + (in[y] ^ 2.0)) ^ 1.5);
+    out[dy] =   (param[cs] * in[dx] - param[ce] * in[y]) / (((in[x] ^ 2.0) + (in[y] ^ 2.0)) ^ 1.5);
+}
+
 struct simulation setupSim(double step) {
     struct simulation result = {
-        .map = new Map(
-            "time:t;"
-            "var:"
-                "x,"
-                "y,"
-                "dx,"
-                "dy;"
-            "par:"
-                "ce,"
-                "cs;"
-            "fun:"
-                "dx,"
-                "dy,"
-                "-(ce*x+cs*dy)/((x^2+y^2)^1.5),"
-                "(cs*dx-ce*y)/((x^2+y^2)^1.5);"
-        )
+        .map = new Map(orbitki, 4, 4, 2)
     };
 
-    result.map->setParameter("ce", 1.0);
-    result.map->setParameter("cs", 0.00001);
+    result.map->setParameter(ce, 1.0);
+    result.map->setParameter(cs, 0.00001);
 
     uint32_t order = 10;
 
@@ -46,6 +52,13 @@ struct simulation setupSim(double step) {
 
     return result;
 }
+
+#undef ce
+#undef cs
+#undef x
+#undef y
+#undef dx
+#undef dy
 
 void initSim(struct simulation *sim, Vector init) {
     struct timestamp initial = {
