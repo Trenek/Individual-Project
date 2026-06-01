@@ -35,7 +35,9 @@ capd::LDVector Newton(capd::LDVector u, capd::LDPoincareMap map, long double ang
     return u;
 }
 
-int main() {
+int main(int argc, char **argv) {
+    long double dy0 = argc > 1 ? atof(argv[1]) : 2.0 * 360.0 / 4.0;
+
     class gnuPlotManager manager{{
         {
             .name = "Trajektoria",
@@ -52,19 +54,18 @@ int main() {
         f.setParameter(CS, 0.00001);
     }
 
-    capd::LDOdeSolver solver{f, order}; {
-        solver.setStep(0.000001);
-    }
+    capd::LDOdeSolver solver{f, order};
+
+    capd::LDOdeSolver::StepControlType s{2, 1.0 / 0x400000};
+    solver.setStepControl(s);
 
     capd::LDCoordinateSection section{4, DR, 0.0};
     capd::LDPoincareMap map{solver, section, capd::poincare::PlusMinus};
-    map.setMaxReturnTime(10);
 
     capd::LDVector u{0.0, 0.0, 0.0, 0.0};
     u[R] = 1.0;
-    u[DT] = -0.03;
 
-    u = Newton(u, map, 2 * 360 / 7.0);
+    u = Newton(u, map, dy0);
 
     long double t = 0.0;
 
@@ -72,7 +73,7 @@ int main() {
     manager.fflush();
     manager.initGNUPlot();
 
-    while (t < 200) {
+    while (t < 2000) {
         u = solver(t, u);
         manager.print(0, "{} {}\n", u[0] * cos(u[1]), u[0] * sin(u[1]));
     }
