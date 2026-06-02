@@ -41,10 +41,8 @@ int main() {
         f.setParameter(CS, 0.00001);
     }
 
-    capd::LDOdeSolver solver{f, order};
-
     capd::LDOdeSolver::StepControlType s{2, 1.0 / 0x400000};
-    solver.setStepControl(s);
+    capd::LDOdeSolver solver{f, order, s};
 
     capd::LDVector u{0.0, 0.0, 0.0, 0.0};
     u[R] = 1.0;

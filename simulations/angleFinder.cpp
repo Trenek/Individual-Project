@@ -54,10 +54,8 @@ int main(int argc, char **argv) {
         f.setParameter(CS, 0.00001);
     }
 
-    capd::LDOdeSolver solver{f, order};
-
     capd::LDOdeSolver::StepControlType s{2, 1.0 / 0x400000};
-    solver.setStepControl(s);
+    capd::LDOdeSolver solver{f, order, s};
 
     capd::LDCoordinateSection section{4, DR, 0.0};
     capd::LDPoincareMap map{solver, section, capd::poincare::PlusMinus};
