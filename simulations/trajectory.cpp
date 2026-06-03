@@ -41,12 +41,12 @@ int main() {
         f.setParameter(CS, 0.00001);
     }
 
-    capd::LDOdeSolver::StepControlType s{2, 1.0 / 0x400000};
-    capd::LDOdeSolver solver{f, order, s};
+    capd::LDOdeSolver solver{f, order};
+    solver.setStep(0.00001);
 
     capd::LDVector u{0.0, 0.0, 0.0, 0.0};
     u[R] = 1.0;
-    u[DT] = 0.2;
+    u[DT] = -0.1;
 
     long double t = 0.0;
 
@@ -56,7 +56,7 @@ int main() {
     manager.print(3, "{} {}\n", u[DR], u[DT]);
     manager.fflush();
 
-    while (t < 200) {
+    while (t < 2000) {
         u = solver(t, u);
         manager.print(0, "{} {}\n", u[0] * cos(u[1]), u[0] * sin(u[1]));
         manager.print(1, "{} {}\n", u[R], u[DR]);
