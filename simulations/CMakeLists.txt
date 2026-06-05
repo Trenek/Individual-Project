@@ -10,6 +10,12 @@ add_executable(Trajectory3D
 )
 target_link_libraries(Trajectory3D Common)
 
+project(Trajectory2D LANGUAGES CXX)
+add_executable(Trajectory2D
+    "${CMAKE_CURRENT_SOURCE_DIR}/trajectory2d.cpp"
+)
+target_link_libraries(Trajectory2D Common)
+
 project(Angle LANGUAGES CXX)
 add_executable(Angle
     "${CMAKE_CURRENT_SOURCE_DIR}/angle.cpp"
