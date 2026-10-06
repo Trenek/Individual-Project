@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
 
     capd::LDVector u{0.0, 0.0, 0.0, 0.0};
     u[R] = 1.0;
+    u[DT] = 0.0156181;
 
     u = Newton(u, map, dy0);
 
@@ -71,7 +72,7 @@ int main(int argc, char **argv) {
     manager.fflush();
     manager.initGNUPlot();
 
-    while (t < 2000) {
+    while (t < 20) {
         u = solver(t, u);
         manager.print(0, "{} {}\n", u[0] * cos(u[1]), u[0] * sin(u[1]));
     }
